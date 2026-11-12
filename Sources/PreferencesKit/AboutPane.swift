@@ -12,6 +12,14 @@ struct AboutPane: View {
         return build.map { $0 == short ? "Version \(short)" : "Version \(short) (\($0))" } ?? "Version \(short)"
     }
 
+    private var credits: String {
+        #if APP_STORE
+        "\(name) is built from scratch with Apple frameworks only."
+        #else
+        "\(name) is an independent reimplementation of the CleanShot X feature set, built from scratch with Apple frameworks only. It is not affiliated with, endorsed by, or connected to CleanShot X or MTW."
+        #endif
+    }
+
     /// "Today at 10:42", "Yesterday at 18:05", "12 Oct 2026 at 09:30".
     private var lastCheckedText: String {
         guard let lastUpdateCheck else { return "Never" }
@@ -40,7 +48,7 @@ struct AboutPane: View {
             }
 
             Section("Credits") {
-                Text("\(name) is an independent reimplementation of the CleanShot X feature set, built from scratch with Apple frameworks only. It is not affiliated with, endorsed by, or connected to CleanShot X or MTW.")
+                Text(credits)
                     .fixedSize(horizontal: false, vertical: true)
                 Text("Icons are SF Symbols; sounds are macOS system sounds.")
                     .foregroundStyle(.secondary)
