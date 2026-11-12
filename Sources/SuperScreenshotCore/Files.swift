@@ -98,20 +98,45 @@ public enum SecurityScope {
         Defaults[key] = Array((Defaults[key].filter { $0.path != path } + [Entry(path: path, bookmark: data)]).suffix(limit))
     }
 
-    /// At launch: re-opens every remembered grant for the lifetime of the process and forgets ones that no longer
-    /// resolve (deleted files, unmounted volumes are kept until they resolve as missing).
+    /// At launch: re-opens every remembered grant. Access is deliberately held for the lifetime of the process (never
+    /// balanced with `stopAccessing…`): export, upload and wallpaper paths are read at arbitrary times, and the
+    /// handful of grants is released by the system when the app quits. Entries whose file is gone from a mounted
+    /// volume are forgotten; ones on a volume that isn't mounted right now (external disk, network share) are kept.
     public static func restoreAll() {
         guard isSandboxed else { return }
         var kept: [Entry] = []
         for entry in Defaults[key] {
             var stale = false
-            guard let url = try? URL(resolvingBookmarkData: entry.bookmark, options: .withSecurityScope,
-                                     relativeTo: nil, bookmarkDataIsStale: &stale) else { continue }
-            _ = url.startAccessingSecurityScopedResource()
+            let url: URL
+            do {
+                url = try URL(resolvingBookmarkData: entry.bookmark, options: .withSecurityScope, relativeTo: nil,
+                              bookmarkDataIsStale: &stale)
+            } catch {
+                if shouldForget(path: entry.path, error: error, volumeMounted: volumeMounted(for: entry.path)) { continue }
+                kept.append(entry); continue
+            }
+            if !url.startAccessingSecurityScopedResource() {
+                Log.app.error("No access to \(url.path, privacy: .public) from its bookmark")
+            }
             let data = stale ? (try? url.bookmarkData(options: .withSecurityScope, includingResourceValuesForKeys: nil, relativeTo: nil)) : nil
             kept.append(Entry(path: url.standardizedFileURL.path, bookmark: data ?? entry.bookmark))
         }
         if kept != Defaults[key] { Defaults[key] = kept }
+    }
+
+    /// A bookmark that failed to resolve is dropped only when its target is really gone: a not-found error while the
+    /// volume holding `path` is mounted. Anything else (volume offline, transient errors) keeps it.
+    public static func shouldForget(path: String, error: Error, volumeMounted: Bool) -> Bool {
+        let ns = error as NSError
+        let notFound = ns.domain == NSCocoaErrorDomain && [NSFileNoSuchFileError, NSFileReadNoSuchFileError].contains(ns.code)
+        return notFound && volumeMounted
+    }
+
+    /// Whether the volume `path` lives on is mounted: `/Volumes/<name>` must exist; everything else is the boot volume.
+    public static func volumeMounted(for path: String) -> Bool {
+        let parts = (path as NSString).pathComponents   // ["/", "Volumes", name, …]
+        guard parts.count >= 3, parts[1] == "Volumes" else { return true }
+        return FileManager.default.fileExists(atPath: "/Volumes/" + parts[2])
     }
 }
 

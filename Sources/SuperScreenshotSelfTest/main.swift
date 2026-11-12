@@ -237,6 +237,14 @@ SelfTest.cases.append(("ShareHandoff", {
     _ = ShareHandoff.take(from: pb, token: token, changeCount: change)
     check(ShareHandoff.take(from: pb, token: token, changeCount: change) != .success(png), "token can't be replayed")
 }))
+SelfTest.cases.append(("SecurityScope bookmark pruning", {
+    let gone = NSError(domain: NSCocoaErrorDomain, code: NSFileNoSuchFileError)
+    check(SecurityScope.shouldForget(path: "/Users/u/Pictures/x", error: gone, volumeMounted: true), "deleted file on a mounted volume is forgotten")
+    check(!SecurityScope.shouldForget(path: "/Volumes/Backup/Shots", error: gone, volumeMounted: false), "unmounted volume kept")
+    check(!SecurityScope.shouldForget(path: "/Users/u/x", error: NSError(domain: NSCocoaErrorDomain, code: NSFileReadUnknownError), volumeMounted: true), "other errors kept")
+    check(SecurityScope.volumeMounted(for: "/Users/u/x"), "boot volume is mounted")
+    check(!SecurityScope.volumeMounted(for: "/Volumes/NoSuchVolume-\(UUID().uuidString)/x"), "missing /Volumes entry is not mounted")
+}))
 SelfTest.cases.append(("Export location probing", {
     let fm = FileManager.default
     let base = fm.temporaryDirectory.appendingPathComponent("superscreenshot-export-\(UUID().uuidString)")
