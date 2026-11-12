@@ -1,0 +1,161 @@
+{
+  "app": "Super Screenshot",
+  "repo": "udsy19/super-screenshot",
+  "branch": "release/macos-app-store",
+  "commit": "e1d6ac1",
+  "bundleIds": {
+    "direct": "com.udsy.superscreenshot",
+    "appstore": "com.udsy.superscreenshot.appstore"
+  },
+  "features": [
+    {
+      "name": "Area/window/fullscreen capture (ScreenCaptureKit)",
+      "classification": "compatible-with-config",
+      "storeStatus": "implemented; needs Screen Recording TCC",
+      "evidence": "TCC request fired in sandboxed run; granted path needs human"
+    },
+    {
+      "name": "OCR (Vision)",
+      "classification": "compatible-with-config",
+      "storeStatus": "implemented; needs TCC",
+      "evidence": "needs human"
+    },
+    {
+      "name": "Scrolling capture auto-scroll (CGEvent post)",
+      "classification": "unverified-needs-experiment",
+      "storeStatus": "gated on CGPreflightPostEventAccess",
+      "evidence": "needs human grant"
+    },
+    {
+      "name": "Annotate editor + save",
+      "classification": "compatible",
+      "storeStatus": "works",
+      "evidence": "saved to ~/Pictures/Super Screenshot under sandbox, no denial"
+    },
+    {
+      "name": "Screen recording video/GIF",
+      "classification": "compatible-with-config",
+      "storeStatus": "needs TCC; menu-bar stop button + timer indicator",
+      "evidence": "needs human"
+    },
+    {
+      "name": "Microphone + system audio",
+      "classification": "compatible-with-config",
+      "storeStatus": "opt-in; audio-input+microphone entitlements",
+      "evidence": "needs human"
+    },
+    {
+      "name": "Camera overlay",
+      "classification": "compatible-with-config",
+      "storeStatus": "opt-in",
+      "evidence": "needs human"
+    },
+    {
+      "name": "Studio Mode input tracking",
+      "classification": "compatible-after-architecture-change",
+      "storeStatus": "listen-only CGEventTap in Store build",
+      "evidence": "compiles; needs human"
+    },
+    {
+      "name": "Keystroke overlay / global Esc",
+      "classification": "compatible-after-architecture-change",
+      "storeStatus": "event tap + Input Monitoring",
+      "evidence": "needs human"
+    },
+    {
+      "name": "Quick Access overlay",
+      "classification": "compatible",
+      "storeStatus": "works",
+      "evidence": "exercised sandboxed"
+    },
+    {
+      "name": "Pins",
+      "classification": "compatible",
+      "storeStatus": "works",
+      "evidence": "named-pasteboard pin exercised sandboxed"
+    },
+    {
+      "name": "Capture History",
+      "classification": "compatible",
+      "storeStatus": "works",
+      "evidence": "window shown; import merge exercised"
+    },
+    {
+      "name": "Hide desktop icons",
+      "classification": "compatible",
+      "storeStatus": "works",
+      "evidence": "cover window exercised"
+    },
+    {
+      "name": "Global shortcuts (Carbon)",
+      "classification": "compatible",
+      "storeStatus": "unchanged",
+      "evidence": "not exercised"
+    },
+    {
+      "name": "Export/upload folders (security-scoped bookmarks)",
+      "classification": "compatible-after-architecture-change",
+      "storeStatus": "default Pictures; bookmarks for chosen folders",
+      "evidence": "default exercised; relaunch persistence needs human"
+    },
+    {
+      "name": "Uploads S3/HTTP/folder",
+      "classification": "compatible-with-config",
+      "storeStatus": "network.client",
+      "evidence": "not exercised"
+    },
+    {
+      "name": "Share extensions",
+      "classification": "compatible-after-architecture-change",
+      "storeStatus": "named pasteboard handoff to containing app",
+      "evidence": "app side exercised; extension side needs human"
+    },
+    {
+      "name": "Quick Look extensions",
+      "classification": "compatible",
+      "storeStatus": "already sandboxed; Store ids",
+      "evidence": "not exercised in Store bundle"
+    },
+    {
+      "name": "URL scheme API",
+      "classification": "compatible-with-config",
+      "storeStatus": "filepath limited to reachable files",
+      "evidence": "sandbox denial + panel fallback observed"
+    },
+    {
+      "name": "Launch at login",
+      "classification": "compatible",
+      "storeStatus": "SMAppService unchanged",
+      "evidence": "not exercised"
+    },
+    {
+      "name": "Import from direct edition",
+      "classification": "compatible",
+      "storeStatus": "Settings > About",
+      "evidence": "library import exercised (originals unchanged); settings via self-test"
+    },
+    {
+      "name": "Self-updater",
+      "classification": "incompatible-confirmed",
+      "storeStatus": "compiled out",
+      "evidence": "nm/strings show no UpdateKit"
+    },
+    {
+      "name": "Apple Events",
+      "classification": "incompatible-confirmed",
+      "storeStatus": "entitlement + usage string removed",
+      "evidence": "entitlement dump"
+    }
+  ],
+  "dependencies": [
+    {
+      "name": "Apple system frameworks",
+      "version": "macOS SDK 26.5",
+      "license": "Apple SDK",
+      "kind": "system",
+      "bundled": false,
+      "sandboxOK": true
+    }
+  ],
+  "status": "FUNCTIONAL VALIDATION PENDING"
+}

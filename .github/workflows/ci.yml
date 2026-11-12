@@ -19,3 +19,8 @@ jobs:
         run: swift run SuperScreenshotSelfTest
       - name: Extensions
         run: ./scripts/build-extensions.sh
+      - name: App Store edition (sandboxed, -DAPP_STORE) build & self-tests
+        run: |
+          swift build --scratch-path .build-appstore -Xswiftc -DAPP_STORE
+          .build-appstore/debug/SuperScreenshotSelfTest
+          DISTRIBUTION=appstore ./scripts/build-app.sh --debug
