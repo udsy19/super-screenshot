@@ -2,7 +2,7 @@
   "app": "Super Screenshot",
   "repo": "udsy19/super-screenshot",
   "branch": "release/macos-app-store",
-  "commit": "e1d6ac1",
+  "commit": "eafe2c3",
   "bundleIds": {
     "direct": "com.udsy.superscreenshot",
     "appstore": "com.udsy.superscreenshot.appstore"
@@ -35,7 +35,7 @@
     {
       "name": "Screen recording video/GIF",
       "classification": "compatible-with-config",
-      "storeStatus": "needs TCC; menu-bar stop button + timer indicator",
+      "storeStatus": "needs TCC; menu-bar stop button forced visible while recording",
       "evidence": "needs human"
     },
     {
@@ -107,8 +107,8 @@
     {
       "name": "Share extensions",
       "classification": "compatible-after-architecture-change",
-      "storeStatus": "named pasteboard handoff to containing app",
-      "evidence": "app side exercised; extension side needs human"
+      "storeStatus": "named pasteboard + one-time token/changeCount/30 s TTL, handed to containing app",
+      "evidence": "app side exercised; spoof/replay/stale cases self-tested; extension side needs human"
     },
     {
       "name": "Quick Look extensions",
