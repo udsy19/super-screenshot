@@ -10,7 +10,9 @@ import OverlayKit
 import TextKit
 import PreferencesKit
 import UploadKit
+#if !APP_STORE
 import UpdateKit
+#endif
 
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
@@ -25,6 +27,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        SecurityScope.restoreAll()
         NSApp.setActivationPolicy(.accessory)
         MainMenu.install()
         installModules()
@@ -92,9 +95,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         return .terminateLater
     }
 
+    #if !APP_STORE
     func applicationWillTerminate(_ notification: Notification) {
         UpdateKitModule.applicationWillTerminate()
     }
+    #endif
 
     private func installModules() {
         UploadKitModule.install()
@@ -105,7 +110,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         RecordingKitModule.install()
         StudioKitModule.install()
         PreferencesKitModule.install()
+        #if !APP_STORE
         UpdateKitModule.install()
+        #endif
     }
 
     private func registerHotkeys() {

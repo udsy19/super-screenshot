@@ -10,7 +10,7 @@ import SuperScreenshotCore
 enum URLSchemeHandler {
     static func handle(_ url: URL) {
         guard let command = url.host?.lowercased() else { return }
-        let q = Dictionary(URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems?
+        var q = Dictionary(URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems?
             .map { ($0.name.lowercased(), $0.value ?? "") } ?? [], uniquingKeysWith: { $1 })
 
         // Commands that never read the screen (they only open files/windows the user chose) skip the API gate;
@@ -18,6 +18,8 @@ enum URLSchemeHandler {
         let harmless: Set<String> = ["open-settings", "open-history", "open-annotate", "pin", "open-from-clipboard",
                                      "add-quick-access-overlay", "restore-recently-closed", "close-all-overlays"]
         if !harmless.contains(command) && !authorize() { return }
+
+        if q["pasteboard"] == "share", let path = takeSharedImage() { q["filepath"] = path }
 
         let rect = rectParam(q)
         let options = CaptureOptions(actions: actionParam(q), rect: rect, displayIndex: q["display"].flatMap(Int.init).map { $0 - 1 })
@@ -63,6 +65,18 @@ enum URLSchemeHandler {
         default:
             Log.app.info("Unknown URL command \(command, privacy: .public)")
         }
+    }
+
+    /// The share extensions of the sandboxed App Store edition can't hand over a file path the app may read, so they
+    /// put the image on this named pasteboard. Saved as a PNG in the temporary folder; returns its path.
+    static let sharePasteboard = NSPasteboard.Name("com.udsy.superscreenshot.share")
+    private static func takeSharedImage() -> String? {
+        let pb = NSPasteboard(name: sharePasteboard)
+        defer { pb.clearContents() }
+        guard let data = pb.data(forType: .png) ?? pb.data(forType: .tiff),
+              let png = NSBitmapImageRep(data: data)?.representation(using: .png, properties: [:]) else { return nil }
+        let url = AppPaths.temporary.appendingPathComponent("Shared \(UUID().uuidString.prefix(8)).png")
+        return (try? png.write(to: url)) != nil ? url.path : nil
     }
 
     /// "Allow URL scheme API" gate; the first unapproved call asks the user.

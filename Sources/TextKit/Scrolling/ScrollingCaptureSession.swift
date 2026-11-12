@@ -70,7 +70,7 @@ import SuperScreenshotCore
         stopFrameTimer()
         autoScrollTask?.cancel(); autoScrollTask = nil
         finishTask?.cancel(); finishTask = nil
-        for m in monitors { NSEvent.removeMonitor(m) }
+        for m in monitors { GlobalEvents.remove(m) }
         monitors.removeAll()
         controls.close()
         preview.hide()
@@ -93,7 +93,7 @@ import SuperScreenshotCore
         }
         if let local = NSEvent.addLocalMonitorForEvents(matching: .keyDown, handler: { handle($0) ? nil : $0 }) { monitors.append(local) }
         // Delivered only with Accessibility permission; lets Esc cancel while another app is frontmost.
-        if let global = NSEvent.addGlobalMonitorForEvents(matching: .keyDown, handler: { e in
+        if let global = GlobalEvents.monitor(.keyDown, handler: { e in
             if e.keyCode == 53 { MainActor.assumeIsolated { _ = handle(e) } }
         }) { monitors.append(global) }
     }
@@ -221,9 +221,9 @@ import SuperScreenshotCore
             return
         }
         // Synthetic scroll events are silently dropped without Accessibility permission.
-        guard Permissions.hasAccessibility else {
+        guard Permissions.canPostEvents else {
             controls.setAutoScroll(false)
-            Permissions.requestAccessibility()
+            Permissions.requestPostEvents()
             hint.show("Auto-Scroll needs Accessibility permission", symbol: "lock.shield", style: .warning, duration: 3)
             return
         }

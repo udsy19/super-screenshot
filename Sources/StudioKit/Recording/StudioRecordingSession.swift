@@ -103,7 +103,7 @@ final class StudioRecordingSession {
             }
             options.microphoneID = nil
         }
-        if options.keystrokes && !Permissions.hasAccessibility { Permissions.requestAccessibility() }
+        if options.keystrokes && !Permissions.canMonitorKeys { Permissions.requestKeyMonitoring() }
         preBar?.orderOut(nil)
         state = .countdown
         let cd = CountdownWindow()

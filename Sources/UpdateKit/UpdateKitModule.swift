@@ -1,3 +1,4 @@
+#if !APP_STORE   // The App Store edition is updated by the App Store; no self-updater is compiled in.
 import AppKit
 import SuperScreenshotCore
 
@@ -14,3 +15,4 @@ public enum UpdateKitModule {
     /// Shows "Updated to x.y.z" once after an update; call when the user opens the menu bar menu.
     @MainActor public static func showUpdatedNoticeIfNeeded() { UpdateController.shared.showUpdatedNoticeIfNeeded() }
 }
+#endif

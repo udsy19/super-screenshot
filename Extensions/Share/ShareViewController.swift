@@ -42,6 +42,22 @@ final class ShareViewController: NSViewController {
         }
     }
 
+    #if APP_STORE
+    /// The sandboxed app can't read this extension's files, so the image travels on a named pasteboard, and the URL
+    /// goes to the containing app explicitly (the direct edition may also be installed and own the scheme).
+    private func handOff(_ file: URL?) {
+        if let file, let data = try? Data(contentsOf: file),
+           let png = NSBitmapImageRep(data: data)?.representation(using: .png, properties: [:]),
+           let url = URL(string: "superscreenshot://\(command)?pasteboard=share") {
+            let pb = NSPasteboard(name: NSPasteboard.Name("com.udsy.superscreenshot.share"))
+            pb.clearContents()
+            pb.setData(png, forType: .png)
+            let app = Bundle.main.bundleURL.deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
+            NSWorkspace.shared.open([url], withApplicationAt: app, configuration: NSWorkspace.OpenConfiguration())
+        }
+        finish()
+    }
+    #else
     private func handOff(_ file: URL?) {
         if let file, var c = URLComponents(string: "superscreenshot://\(command)") {
             c.queryItems = [URLQueryItem(name: "filepath", value: file.path)]
@@ -49,6 +65,7 @@ final class ShareViewController: NSViewController {
         }
         finish()
     }
+    #endif
 
     private func finish() { extensionContext?.completeRequest(returningItems: nil) }
 }

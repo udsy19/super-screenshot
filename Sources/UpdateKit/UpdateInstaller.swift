@@ -1,3 +1,4 @@
+#if !APP_STORE   // The App Store edition is updated by the App Store; no self-updater is compiled in.
 import CryptoKit
 import Foundation
 import Security
@@ -286,3 +287,4 @@ public enum UpdateInstaller {
         return data
     }
 }
+#endif

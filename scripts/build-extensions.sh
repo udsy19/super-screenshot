@@ -3,9 +3,14 @@
 # because SwiftPM cannot produce .appex bundles.
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"; cd "$ROOT"
-OUT="$ROOT/build/PlugIns"; rm -rf "$OUT"; mkdir -p "$OUT"
+# APP_ID / PLUGINS_DIR are set by build-app.sh for the App Store edition (its bundle id; extensions built with -D APP_STORE).
+OUT="${PLUGINS_DIR:-$ROOT/build/PlugIns}"; rm -rf "$OUT"; mkdir -p "$OUT"
 SDK="$(xcrun --show-sdk-path)"; ARCH="$(uname -m)"; MIN=14.0
-APP_ID=com.udsy.superscreenshot
+APP_ID="${APP_ID:-com.udsy.superscreenshot}"
+# Extensions carry the app's version (App Store validation rejects a mismatch).
+VERSION=$(/usr/libexec/PlistBuddy -c "Print CFBundleShortVersionString" Resources/Info.plist)
+BUILD=$(/usr/libexec/PlistBuddy -c "Print CFBundleVersion" Resources/Info.plist)
+EDITION_FLAGS=""; [ "$APP_ID" != com.udsy.superscreenshot ] && EDITION_FLAGS="-D APP_STORE"
 
 # make_appex <name> <display> <point-id> <principal-class> <attributes-xml> <flags> <sources...>
 make_appex() {
@@ -16,7 +21,7 @@ make_appex() {
   local slices=()
   for a in "${archs[@]}"; do
     # shellcheck disable=SC2086
-    swiftc -O -module-name "$name" -target "$a-apple-macos$MIN" -sdk "$SDK" -application-extension $flags \
+    swiftc -O -module-name "$name" -target "$a-apple-macos$MIN" -sdk "$SDK" -application-extension $flags $EDITION_FLAGS \
       -Xlinker -e -Xlinker _NSExtensionMain -o "$dir/MacOS/$name.$a" "$@"
     slices+=("$dir/MacOS/$name.$a")
   done
@@ -32,8 +37,8 @@ make_appex() {
   <key>CFBundleInfoDictionaryVersion</key><string>6.0</string>
   <key>CFBundleName</key><string>$name</string>
   <key>CFBundlePackageType</key><string>XPC!</string>
-  <key>CFBundleShortVersionString</key><string>1.0.0</string>
-  <key>CFBundleVersion</key><string>1</string>
+  <key>CFBundleShortVersionString</key><string>$VERSION</string>
+  <key>CFBundleVersion</key><string>$BUILD</string>
   <key>LSMinimumSystemVersion</key><string>$MIN</string>
   <key>NSExtension</key><dict>
     <key>NSExtensionAttributes</key><dict>$attrs</dict>

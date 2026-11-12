@@ -123,6 +123,17 @@ final class HistoryStore: ObservableObject, HistoryServicing {
 
     // MARK: Persistence
 
+    @discardableResult
+    func merge(indexAt url: URL) -> Int {
+        let known = Set(items.map(\.id))
+        let new = HistoryIndex.load(from: url).filter { !known.contains($0.id) }.map { $0.makeMedia() }
+        guard !new.isEmpty else { return 0 }
+        items = (items + new).sorted { $0.createdAt > $1.createdAt }
+        prune()
+        save()
+        return new.count
+    }
+
     private func load() {
         items = HistoryIndex.load(from: fileURL).map { $0.makeMedia() }
     }

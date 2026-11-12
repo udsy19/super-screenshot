@@ -77,15 +77,15 @@ final class HistoryWindowController: NSObject {
         }
         if clickMonitor == nil {
             // Global monitors only see events going to other apps: a click anywhere else dismisses the strip.
-            clickMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown]) { [weak self] _ in
+            clickMonitor = GlobalEvents.monitor([.leftMouseDown, .rightMouseDown]) { [weak self] _ in
                 MainActor.assumeIsolated { self?.close() }
             }
         }
     }
 
     private func removeMonitors() {
-        if let m = keyMonitor { NSEvent.removeMonitor(m) }
-        if let m = clickMonitor { NSEvent.removeMonitor(m) }
+        if let m = keyMonitor { GlobalEvents.remove(m) }
+        if let m = clickMonitor { GlobalEvents.remove(m) }
         keyMonitor = nil
         clickMonitor = nil
     }

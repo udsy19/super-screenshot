@@ -8,6 +8,8 @@ func registerModuleTests() {
     registerTextKitTests()
     registerPreferencesKitTests()
     registerUploadKitTests()
+    #if !APP_STORE
     registerUpdateKitTests()
+    #endif
     registerRecoveryTests()
 }

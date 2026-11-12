@@ -47,11 +47,18 @@ struct AboutPane: View {
             }
 
             Section {
+                #if !APP_STORE
                 LabeledContent("Last checked for updates") { Text(lastCheckedText) }
+                #endif
                 LabeledContent("Bundle identifier") { Text(AppPaths.bundleID).textSelection(.enabled) }
                 LabeledContent("Data folder") {
                     Button("Show in Finder") { NSWorkspace.shared.activateFileViewerSelecting([AppPaths.support]) }
                 }
+                #if APP_STORE
+                LabeledContent("Super Screenshot (direct download)") {
+                    Button("Import Captures & Settings…") { DirectEditionImport.runInteractively() }
+                }
+                #endif
                 LabeledContent("Welcome guide") {
                     Button("Show Onboarding…") { Services.preferences?.showOnboarding() }
                 }

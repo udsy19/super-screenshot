@@ -346,7 +346,7 @@ final class CountdownWindow {
         p.orderFrontRegardless()
         panel = p
         Sound.play(.countdownTick)
-        keyMonitor = NSEvent.addGlobalMonitorForEvents(matching: .keyDown) { [weak self] e in
+        keyMonitor = GlobalEvents.monitor(.keyDown) { [weak self] e in
             if e.keyCode == 53 { MainActor.assumeIsolated { self?.finish(false) } }
         }
         localKeyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] e in
@@ -367,8 +367,8 @@ final class CountdownWindow {
 
     func finish(_ ok: Bool) {
         timer?.invalidate(); timer = nil
-        if let m = keyMonitor { NSEvent.removeMonitor(m); keyMonitor = nil }
-        if let m = localKeyMonitor { NSEvent.removeMonitor(m); localKeyMonitor = nil }
+        if let m = keyMonitor { GlobalEvents.remove(m); keyMonitor = nil }
+        if let m = localKeyMonitor { GlobalEvents.remove(m); localKeyMonitor = nil }
         panel?.orderOut(nil); panel = nil
         let c = completion; completion = nil
         c?(ok)

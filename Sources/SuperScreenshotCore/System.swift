@@ -62,6 +62,27 @@ public enum Permissions {
         _ = AXIsProcessTrustedWithOptions([key: true] as CFDictionary)
     }
 
+    /// Posting synthetic events (scrolling capture's auto-scroll). Granted under Privacy & Security → Accessibility.
+    public static var canPostEvents: Bool { CGPreflightPostEventAccess() }
+    public static func requestPostEvents() { _ = CGRequestPostEventAccess() }
+
+    /// Seeing keystrokes typed into other apps (keystroke overlay): Accessibility for the NSEvent global monitor in
+    /// the direct edition, Input Monitoring for the App Store edition's event tap (see `GlobalEvents`).
+    public static var canMonitorKeys: Bool {
+        #if APP_STORE
+        CGPreflightListenEventAccess()
+        #else
+        hasAccessibility
+        #endif
+    }
+    public static func requestKeyMonitoring() {
+        #if APP_STORE
+        _ = CGRequestListenEventAccess()
+        #else
+        requestAccessibility()
+        #endif
+    }
+
     public static func status(for media: AVMediaType) -> AVAuthorizationStatus { AVCaptureDevice.authorizationStatus(for: media) }
     public static func request(_ media: AVMediaType, completion: @escaping (Bool) -> Void) {
         AVCaptureDevice.requestAccess(for: media) { ok in DispatchQueue.main.async { completion(ok) } }
@@ -262,4 +283,62 @@ public enum DockIcon {
 public final class UncheckedBox<T>: @unchecked Sendable {
     public let value: T
     public init(_ value: T) { self.value = value }
+}
+
+// MARK: - Events of other apps
+
+/// Global event monitoring (keys and clicks while another app is frontmost). NSEvent global monitors deliver nothing
+/// inside the App Sandbox, so the App Store edition uses a listen-only `CGEventTap` instead (keyboard events need
+/// Input Monitoring permission; without it the tap is not created and the call returns nil, like a refused monitor).
+/// `remove` accepts local NSEvent monitors too, so mixed monitor lists can be torn down with it.
+public enum GlobalEvents {
+    public static func monitor(_ mask: NSEvent.EventTypeMask, handler: @escaping (NSEvent) -> Void) -> Any? {
+        #if APP_STORE
+        return ListenOnlyEventTap(mask: mask, handler: handler)
+        #else
+        return NSEvent.addGlobalMonitorForEvents(matching: mask, handler: handler)
+        #endif
+    }
+
+    public static func remove(_ monitor: Any) {
+        if let tap = monitor as? ListenOnlyEventTap { tap.stop() } else { NSEvent.removeMonitor(monitor) }
+    }
+}
+
+/// A listen-only session event tap on the main run loop that hands each event to `handler` as an NSEvent.
+public final class ListenOnlyEventTap: @unchecked Sendable {
+    private var tap: CFMachPort?
+    private var source: CFRunLoopSource?
+    private let handler: (NSEvent) -> Void
+
+    public init?(mask: NSEvent.EventTypeMask, handler: @escaping (NSEvent) -> Void) {
+        self.handler = handler
+        let callback: CGEventTapCallBack = { _, type, event, refcon in
+            guard let refcon else { return Unmanaged.passUnretained(event) }
+            let me = Unmanaged<ListenOnlyEventTap>.fromOpaque(refcon).takeUnretainedValue()
+            if type == .tapDisabledByTimeout || type == .tapDisabledByUserInput {
+                if let tap = me.tap { CGEvent.tapEnable(tap: tap, enable: true) }
+            } else if let e = NSEvent(cgEvent: event) {
+                me.handler(e)
+            }
+            return Unmanaged.passUnretained(event)
+        }
+        guard let tap = CGEvent.tapCreate(tap: .cgSessionEventTap, place: .headInsertEventTap, options: .listenOnly,
+                                          eventsOfInterest: CGEventMask(mask.rawValue), callback: callback,
+                                          userInfo: Unmanaged.passUnretained(self).toOpaque()) else { return nil }
+        self.tap = tap
+        source = CFMachPortCreateRunLoopSource(nil, tap, 0)
+        CFRunLoopAddSource(CFRunLoopGetMain(), source, .commonModes)
+        CGEvent.tapEnable(tap: tap, enable: true)
+    }
+
+    public func stop() {
+        guard let tap else { return }
+        CGEvent.tapEnable(tap: tap, enable: false)
+        if let source { CFRunLoopRemoveSource(CFRunLoopGetMain(), source, .commonModes) }
+        CFMachPortInvalidate(tap)
+        self.tap = nil; source = nil
+    }
+
+    deinit { stop() }
 }

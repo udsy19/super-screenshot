@@ -23,8 +23,10 @@ struct GeneralPane: View {
                 }
                 .accessibilityLabel("Show menu bar icon")
                 .id(menuBarIconRevision)
+                #if !APP_STORE
                 SettingToggle("Install updates automatically", isOn: $installUpdates,
                               help: "Checks GitHub every few hours and installs new versions in the background.")
+                #endif
             }
 
             Section {

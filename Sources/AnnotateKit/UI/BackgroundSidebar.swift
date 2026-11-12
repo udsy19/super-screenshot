@@ -371,6 +371,7 @@ final class BackgroundSidebar: NSView {
         panel.message = "Choose a background image"
         panel.beginSheetModal(for: window) { [weak self] r in
             guard r == .OK, let url = panel.url else { return }
+            SecurityScope.remember(url)
             Defaults[.annotateCustomWallpapers] = RecentProjects.updated(Defaults[.annotateCustomWallpapers], adding: url.path, limit: 5)
             self?.setFill(.image(url.path))
         }

@@ -1,7 +1,9 @@
 import AppKit
 import Combine
 import SuperScreenshotCore
+#if !APP_STORE
 import UpdateKit
+#endif
 
 /// Menu bar icon + menu (item order and wording follow CleanShot X 5.0, see docs/specs/ui-reference.md §1).
 /// Turns into a stop button with elapsed time while recording; accepts images dropped onto the icon.
@@ -96,7 +98,9 @@ final class StatusMenuController: NSObject, NSMenuDelegate, NSWindowDelegate, NS
     /// Rebuilt right before it opens so titles (desktop icons, uploads) and shortcuts are current.
     func menuNeedsUpdate(_ menu: NSMenu) { rebuild() }
 
+    #if !APP_STORE
     func menuWillOpen(_ menu: NSMenu) { UpdateKitModule.showUpdatedNoticeIfNeeded() }
+    #endif
 
     func rebuild() {
         menu.removeAllItems()

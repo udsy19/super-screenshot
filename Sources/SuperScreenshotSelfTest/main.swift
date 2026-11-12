@@ -161,6 +161,43 @@ SelfTest.cases.append(("LegacyMigration resumable", {
     LegacyMigration.migrate(supportBase: base, domain: domain, legacyDomain: legacyDomain)
     check(!fm.fileExists(atPath: old.path), "old folder removed once it is empty")
 }))
+SelfTest.cases.append(("DirectEditionImport", {
+    // App Store edition: copy the direct edition's library + settings; the originals must stay untouched.
+    let fm = FileManager.default
+    let base = fm.temporaryDirectory.appendingPathComponent("superscreenshot-import-\(UUID().uuidString)")
+    let domain = "superscreenshot.selftest.import"
+    let defaults = UserDefaults(suiteName: domain)!
+    defer { try? fm.removeItem(at: base); defaults.removePersistentDomain(forName: domain) }
+    let src = base.appendingPathComponent("direct/SuperScreenshot"), dst = base.appendingPathComponent("container/SuperScreenshot")
+    for dir in ["Media", "History", "Recordings", "Projects", "Updates"] { try? fm.createDirectory(at: src.appendingPathComponent(dir), withIntermediateDirectories: true) }
+    try? fm.createDirectory(at: dst.appendingPathComponent("Media"), withIntermediateDirectories: true)
+    let shot = src.appendingPathComponent("Media/Screenshot 1.png")
+    try? Data([1]).write(to: shot)
+    try? Data([2]).write(to: src.appendingPathComponent("Recordings/clip.mp4"))
+    try? Data([3]).write(to: src.appendingPathComponent("Media/both.png"))
+    try? Data([4]).write(to: dst.appendingPathComponent("Media/both.png"))
+    try? JSONEncoder().encode(["sourcePath": shot.path]).write(to: src.appendingPathComponent("Projects/p.superscreenshot"))
+    let copied = try? DirectEditionImport.importLibrary(from: src, to: dst)
+    check(!fm.fileExists(atPath: dst.appendingPathComponent("Updates").path), "direct-only Updates folder skipped")
+    check(copied == 4, "copied every missing item (got \(String(describing: copied)))")
+    check(fm.fileExists(atPath: shot.path) && fm.fileExists(atPath: src.appendingPathComponent("Recordings/clip.mp4").path), "originals untouched")
+    check((try? Data(contentsOf: dst.appendingPathComponent("Media/both.png"))) == Data([4]), "existing container file wins")
+    let sidecar = (try? Data(contentsOf: dst.appendingPathComponent("Projects/p.superscreenshot")))
+        .flatMap { try? JSONDecoder().decode([String: String].self, from: $0) }
+    check(sidecar?["sourcePath"] == dst.appendingPathComponent("Media/Screenshot 1.png").path, "project re-pointed into the container")
+    let original = (try? Data(contentsOf: src.appendingPathComponent("Projects/p.superscreenshot")))
+        .flatMap { try? JSONDecoder().decode([String: String].self, from: $0) }
+    check(original?["sourcePath"] == shot.path, "original project not rewritten")
+
+    let plist = base.appendingPathComponent("direct.plist")
+    let prefs: [String: Any] = ["playSounds": false, "exportLocation": "/Users/u/Desktop", "launchAtLogin": true,
+                                "annotate.recentProjects": [src.path + "/Projects/p.superscreenshot"]]
+    try? PropertyListSerialization.data(fromPropertyList: prefs, format: .binary, options: 0).write(to: plist)
+    let keys = (try? DirectEditionImport.importSettings(fromPlist: plist, into: defaults, oldLibrary: src.path, newLibrary: dst.path)) ?? []
+    check(keys == ["annotate.recentProjects", "playSounds"], "imports settings, skips folders and login item (got \(keys))")
+    check(defaults.object(forKey: "playSounds") as? Bool == false && defaults.object(forKey: "exportLocation") == nil, "values written")
+    check(defaults.stringArray(forKey: "annotate.recentProjects") == [dst.path + "/Projects/p.superscreenshot"], "paths re-pointed")
+}))
 SelfTest.cases.append(("Export location probing", {
     let fm = FileManager.default
     let base = fm.temporaryDirectory.appendingPathComponent("superscreenshot-export-\(UUID().uuidString)")

@@ -101,6 +101,8 @@
 	<true/>
 	<key>NSAppleEventsUsageDescription</key>
 	<string>Super Screenshot uses Apple Events to scroll content during scrolling capture.</string>
+	<key>NSAudioCaptureUsageDescription</key>
+	<string>Super Screenshot records system audio only during screen recordings when you enable it.</string>
 	<key>NSCameraUsageDescription</key>
 	<string>Super Screenshot uses the camera only to show your camera overlay during recordings.</string>
 	<key>NSHighResolutionCapable</key>

@@ -426,7 +426,7 @@ private final class RecorderSettingsPanel: NSView {
         clicksCell.onClick = { [weak self] in Defaults[.recordHighlightClicks].toggle(); self?.refresh() }
         keysCell.onClick = { [weak self] in
             Defaults[.recordShowKeystrokes].toggle()
-            if Defaults[.recordShowKeystrokes], !Permissions.hasAccessibility { Permissions.requestAccessibility() }
+            if Defaults[.recordShowKeystrokes], !Permissions.canMonitorKeys { Permissions.requestKeyMonitoring() }
             self?.refresh()
         }
         refresh()

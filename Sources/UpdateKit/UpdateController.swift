@@ -1,3 +1,4 @@
+#if !APP_STORE   // The App Store edition is updated by the App Store; no self-updater is compiled in.
 import AppKit
 import Combine
 import SuperScreenshotCore
@@ -185,3 +186,4 @@ final class UpdateController {
         for line in text.split(separator: "\n") { Log.update.info("helper: \(line, privacy: .public)") }
     }
 }
+#endif

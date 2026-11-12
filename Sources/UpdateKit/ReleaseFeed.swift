@@ -1,3 +1,4 @@
+#if !APP_STORE   // The App Store edition is updated by the App Store; no self-updater is compiled in.
 import Foundation
 
 // Pure, UI-free update logic: versions, the GitHub release feed, the check schedule and the idle gate.
@@ -200,3 +201,4 @@ public enum UpdateApplyGate {
         !a.isRecording && !a.isUploading && !a.hasOpenWindows && a.secondsSinceInput >= requiredIdle
     }
 }
+#endif
