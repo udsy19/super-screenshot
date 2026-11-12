@@ -21,7 +21,8 @@ final class StatusMenuController: NSObject, NSMenuDelegate, NSWindowDelegate, NS
         // Roomier than the system default (13 pt text, ~22 pt rows) so the menu reads at a glance.
         menu.font = .menuFont(ofSize: 13.5)
         menu.minimumWidth = 240
-        Defaults.publisher(.showMenuBarIcon).sink { [weak self] show in self?.setVisible(show) }.store(in: &cancellables)
+        Defaults.publisher(.showMenuBarIcon).sink { [weak self] show in self?.setVisible(show || self?.recording == true) }
+            .store(in: &cancellables)
         StatusBar.setRecording = { [weak self] active, elapsed in self?.setRecording(active, elapsed: elapsed) }
         StatusBar.setProgress = { [weak self] p in self?.progress = p; self?.updateIcon() }
         rebuild()
@@ -85,6 +86,9 @@ final class StatusMenuController: NSObject, NSMenuDelegate, NSWindowDelegate, NS
 
     private func setRecording(_ active: Bool, elapsed: String?) {
         recording = active
+        // A recording always shows its stop button in the menu bar, even with the icon hidden in Settings and the
+        // on-screen controls turned off: the user must be able to see that recording is on (guideline 2.5.14).
+        setVisible(active || Defaults[.showMenuBarIcon])
         item?.menu = active ? nil : menu
         updateIcon()
         item?.button?.title = active && Defaults[.recordShowTimeInMenuBar] ? " \(elapsed ?? "")" : ""
