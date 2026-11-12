@@ -191,10 +191,12 @@ SelfTest.cases.append(("DirectEditionImport", {
 
     let plist = base.appendingPathComponent("direct.plist")
     let prefs: [String: Any] = ["playSounds": false, "exportLocation": "/Users/u/Desktop", "launchAtLogin": true,
+                                "allowURLSchemeAPI": true, "urlSchemeTrustedApps": ["com.example.raycast"],
+                                "customHTTPHeaders": Data("{\"Authorization\":\"Bearer x\"}".utf8),
                                 "annotate.recentProjects": [src.path + "/Projects/p.superscreenshot"]]
     try? PropertyListSerialization.data(fromPropertyList: prefs, format: .binary, options: 0).write(to: plist)
     let keys = (try? DirectEditionImport.importSettings(fromPlist: plist, into: defaults, oldLibrary: src.path, newLibrary: dst.path)) ?? []
-    check(keys == ["annotate.recentProjects", "playSounds"], "imports settings, skips folders and login item (got \(keys))")
+    check(keys == ["annotate.recentProjects", "playSounds"], "imports settings, skips folders, login item, URL consent and HTTP headers (got \(keys))")
     check(defaults.object(forKey: "playSounds") as? Bool == false && defaults.object(forKey: "exportLocation") == nil, "values written")
     check(defaults.stringArray(forKey: "annotate.recentProjects") == [dst.path + "/Projects/p.superscreenshot"], "paths re-pointed")
 }))

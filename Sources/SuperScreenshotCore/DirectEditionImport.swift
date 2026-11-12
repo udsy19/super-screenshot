@@ -8,10 +8,13 @@ public enum DirectEditionImport {
     public static let directBundleID = "com.udsy.superscreenshot"
 
     /// Settings that are not carried over: folders outside the container (unreachable until chosen again in Settings),
-    /// login-item and updater state of the other edition, and this edition's own access grants.
+    /// login-item and updater state of the other edition, this edition's own access grants, URL-scheme consent (this
+    /// edition asks for its own), and custom upload HTTP headers (they may carry credentials; re-enter them in
+    /// Settings → Upload).
     static let skippedKeys: Set<String> = [
         "exportLocation", "uploadFolderPath", "customWallpaperPath", "launchAtLogin",
         "installUpdatesAutomatically", "lastUpdateCheck", "securityScopedBookmarks",
+        "allowURLSchemeAPI", "urlSchemeTrustedApps", "customHTTPHeaders",
     ]
 
     /// The direct edition's library: ~/Library/Application Support/SuperScreenshot.
@@ -83,7 +86,7 @@ public enum DirectEditionImport {
         }
 
         var settings = 0
-        if Alerts.confirm("Import settings too?", info: "Choose “\(directBundleID).plist” in Library/Preferences. Shortcuts, capture and annotation settings are copied; save and upload folders must be chosen again.",
+        if Alerts.confirm("Import settings too?", info: "Choose “\(directBundleID).plist” in Library/Preferences. Shortcuts, capture and annotation settings are copied. Save and upload folders, custom upload headers and URL-scheme permission must be set again.",
                           confirmTitle: "Choose Settings File…", cancelTitle: "Skip") {
             let filePanel = NSOpenPanel()
             filePanel.canChooseFiles = true
