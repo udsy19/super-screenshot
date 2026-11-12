@@ -19,7 +19,10 @@ enum URLSchemeHandler {
                                      "add-quick-access-overlay", "restore-recently-closed", "close-all-overlays"]
         if !harmless.contains(command) && !authorize() { return }
 
-        if q["pasteboard"] == "share", let path = takeSharedImage() { q["filepath"] = path }
+        if q["pasteboard"] == "share" {
+            guard let path = takeSharedImage(token: q["token"], changeCount: q["change"].flatMap(Int.init)) else { return }
+            q["filepath"] = path
+        }
 
         let rect = rectParam(q)
         let options = CaptureOptions(actions: actionParam(q), rect: rect, displayIndex: q["display"].flatMap(Int.init).map { $0 - 1 })
@@ -67,14 +70,16 @@ enum URLSchemeHandler {
         }
     }
 
-    /// The share extensions of the sandboxed App Store edition can't hand over a file path the app may read, so they
-    /// put the image on this named pasteboard. Saved as a PNG in the temporary folder; returns its path.
-    static let sharePasteboard = NSPasteboard.Name("com.udsy.superscreenshot.share")
-    private static func takeSharedImage() -> String? {
-        let pb = NSPasteboard(name: sharePasteboard)
-        defer { pb.clearContents() }
-        guard let data = pb.data(forType: .png) ?? pb.data(forType: .tiff),
-              let png = NSBitmapImageRep(data: data)?.representation(using: .png, properties: [:]) else { return nil }
+    /// An image handed over by a share extension of the App Store edition (`ShareHandoff`), saved as a PNG in the
+    /// temporary folder; returns its path. Nil (and nothing happens) when the handoff is rejected.
+    private static func takeSharedImage(token: String?, changeCount: Int?) -> String? {
+        let png: Data
+        switch ShareHandoff.take(from: NSPasteboard(name: ShareHandoff.pasteboardName), token: token, changeCount: changeCount) {
+        case .success(let data): png = data
+        case .failure(let why):
+            Log.app.error("Rejected shared image: \(String(describing: why), privacy: .public)")
+            return nil
+        }
         let url = AppPaths.temporary.appendingPathComponent("Shared \(UUID().uuidString.prefix(8)).png")
         return (try? png.write(to: url)) != nil ? url.path : nil
     }

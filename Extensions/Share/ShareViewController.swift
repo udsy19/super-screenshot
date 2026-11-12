@@ -43,17 +43,25 @@ final class ShareViewController: NSViewController {
     }
 
     #if APP_STORE
-    /// The sandboxed app can't read this extension's files, so the image travels on a named pasteboard, and the URL
-    /// goes to the containing app explicitly (the direct edition may also be installed and own the scheme).
+    /// The sandboxed app can't read this extension's files, so the image travels on a named pasteboard with a one-time
+    /// token (checked by `ShareHandoff` in the app; the names below must match it), and the URL goes to the containing
+    /// app explicitly (the direct edition may also be installed and own the scheme).
     private func handOff(_ file: URL?) {
-        if let file, let data = try? Data(contentsOf: file),
-           let png = NSBitmapImageRep(data: data)?.representation(using: .png, properties: [:]),
-           let url = URL(string: "superscreenshot://\(command)?pasteboard=share") {
-            let pb = NSPasteboard(name: NSPasteboard.Name("com.udsy.superscreenshot.share"))
-            pb.clearContents()
-            pb.setData(png, forType: .png)
-            let app = Bundle.main.bundleURL.deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
-            NSWorkspace.shared.open([url], withApplicationAt: app, configuration: NSWorkspace.OpenConfiguration())
+        guard let file, let data = try? Data(contentsOf: file),
+              let png = NSBitmapImageRep(data: data)?.representation(using: .png, properties: [:]) else { finish(); return }
+        let pb = NSPasteboard(name: NSPasteboard.Name("com.udsy.superscreenshot.share"))
+        let token = UUID().uuidString
+        pb.clearContents()
+        pb.setData(png, forType: .png)
+        pb.setString(token, forType: NSPasteboard.PasteboardType("com.udsy.superscreenshot.share.token"))
+        pb.setString(String(Date().timeIntervalSince1970), forType: NSPasteboard.PasteboardType("com.udsy.superscreenshot.share.time"))
+        var c = URLComponents(string: "superscreenshot://\(command)")
+        c?.queryItems = [URLQueryItem(name: "pasteboard", value: "share"), URLQueryItem(name: "token", value: token),
+                         URLQueryItem(name: "change", value: String(pb.changeCount))]
+        guard let url = c?.url else { pb.clearContents(); finish(); return }
+        let app = Bundle.main.bundleURL.deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
+        NSWorkspace.shared.open([url], withApplicationAt: app, configuration: NSWorkspace.OpenConfiguration()) { _, error in
+            if error != nil { pb.clearContents() }   // the app never got it: don't leave the image lying around
         }
         finish()
     }

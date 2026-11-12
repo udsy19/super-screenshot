@@ -198,6 +198,45 @@ SelfTest.cases.append(("DirectEditionImport", {
     check(defaults.object(forKey: "playSounds") as? Bool == false && defaults.object(forKey: "exportLocation") == nil, "values written")
     check(defaults.stringArray(forKey: "annotate.recentProjects") == [dst.path + "/Projects/p.superscreenshot"], "paths re-pointed")
 }))
+SelfTest.cases.append(("ShareHandoff", {
+    // App Store share extensions → app over a named pasteboard (a private test name, not the real one).
+    let pb = NSPasteboard(name: NSPasteboard.Name("com.udsy.superscreenshot.share.selftest-\(UUID().uuidString)"))
+    defer { pb.releaseGlobally() }
+    let png = NSBitmapImageRep(bitmapDataPlanes: nil, pixelsWide: 2, pixelsHigh: 2, bitsPerSample: 8, samplesPerPixel: 4,
+                               hasAlpha: true, isPlanar: false, colorSpaceName: .deviceRGB, bytesPerRow: 0, bitsPerPixel: 0)!
+        .representation(using: .png, properties: [:])!
+    /// What the extension does; returns (token, changeCount) as it puts them in the URL.
+    func write(token: String = UUID().uuidString, at time: Date = Date()) -> (String, Int) {
+        pb.clearContents()
+        pb.setData(png, forType: .png)
+        pb.setString(token, forType: ShareHandoff.tokenType)
+        pb.setString(String(time.timeIntervalSince1970), forType: ShareHandoff.timeType)
+        return (token, pb.changeCount)
+    }
+    func cleared() -> Bool { pb.data(forType: .png) == nil && pb.string(forType: ShareHandoff.tokenType) == nil }
+
+    var (token, change) = write()
+    if case .success(let data) = ShareHandoff.take(from: pb, token: token, changeCount: change) { check(!data.isEmpty, "image data") }
+    else { check(false, "genuine handoff accepted") }
+    check(cleared(), "cleared after success")
+
+    (token, change) = write()
+    check(ShareHandoff.take(from: pb, token: UUID().uuidString, changeCount: change) == .failure(.tokenMismatch), "spoofed URL token rejected")
+    check(cleared(), "cleared after rejection")
+
+    (token, change) = write()
+    // Another process replaces the image but copies the token it can read.
+    _ = write(token: token)
+    check(ShareHandoff.take(from: pb, token: token, changeCount: change) == .failure(.overwritten), "overwritten pasteboard rejected")
+    check(cleared(), "cleared after overwrite rejection")
+
+    (token, change) = write(at: Date().addingTimeInterval(-ShareHandoff.ttl - 5))
+    check(ShareHandoff.take(from: pb, token: token, changeCount: change) == .failure(.expired), "stale handoff rejected")
+    check(ShareHandoff.take(from: pb, token: nil, changeCount: nil) == .failure(.missingToken), "URL without token rejected")
+    (token, change) = write()
+    _ = ShareHandoff.take(from: pb, token: token, changeCount: change)
+    check(ShareHandoff.take(from: pb, token: token, changeCount: change) != .success(png), "token can't be replayed")
+}))
 SelfTest.cases.append(("Export location probing", {
     let fm = FileManager.default
     let base = fm.temporaryDirectory.appendingPathComponent("superscreenshot-export-\(UUID().uuidString)")
