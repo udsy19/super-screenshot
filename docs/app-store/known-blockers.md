@@ -11,7 +11,7 @@
 - Scrolling-capture auto-scroll after granting Accessibility (CGEvent posting from the sandbox).
 - Studio Mode click tracking and the keystroke overlay with Input Monitoring granted (the event tap).
 - Choose an export folder → quit → relaunch → save a capture there (bookmark persistence).
-- Share menu → "Annotate with Super Screenshot" / "Pin to the Screen" from Finder or Photos (named-pasteboard write from the sandboxed extension).
+- Share menu → "Annotate with Super Screenshot" / "Pin to the Screen" from Finder or Photos (named-pasteboard write with token from the sandboxed extension; the app-side checks are self-tested).
 - Import flow, settings step: select `com.udsy.superscreenshot.plist` in the second panel.
 - Check whether the Accessibility prompt appears from the sandbox (`universalaccessAuthWarn` mach-lookup denial on first launch).
 

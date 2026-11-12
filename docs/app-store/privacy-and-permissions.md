@@ -14,7 +14,7 @@ All capture, OCR (Vision) and editing happen on the device. There is no analytic
 **Recording consent and indicator (guideline 2.5.14).**
 - Recording starts only from an explicit user action: a menu command, a shortcut, or the Record button in the setup overlay.
 - The microphone and camera are separate opt-in toggles.
-- While recording, the menu-bar icon becomes a stop button showing the elapsed time, and the recording frame and controls stay on screen.
+- While recording, the menu bar always shows a stop button, even if the menu-bar icon is hidden in Settings and the on-screen controls are off. The elapsed time is shown too, if enabled.
 - macOS also shows its own screen-recording and microphone indicators.
 
 **TCC grants don't transfer** from the direct edition to the Store edition (different bundle id and signature). Users must grant permissions again.
