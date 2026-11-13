@@ -55,3 +55,14 @@ Super Screenshot makes no network requests other than the uploads you configure.
 
 Run `curl -fsSL https://udsy19.github.io/super-screenshot/install.sh | bash -s -- --uninstall`, then delete
 `~/Library/Application Support/SuperScreenshot` and `~/Library/Preferences/com.udsy.superscreenshot.plist`.
+
+## Mac App Store edition
+
+Super Screenshot from the Mac App Store (`com.udsy.superscreenshot.appstore`) follows everything above, with these differences:
+
+- **Data collected by the developer: none.** No analytics, no accounts, no servers.
+- **No updates check.** The App Store edition has no built-in updater and never contacts GitHub; the App Store updates it. Its only network use is uploads you set up yourself to your own S3-compatible bucket or HTTP endpoint (off until configured).
+- **Permissions:** Screen & System Audio Recording for every capture and recording; Microphone and Camera only when you turn them on for a recording; Accessibility (post events) only for auto-scroll in scrolling capture; Input Monitoring only for the keystroke overlay. Each is requested when you first use the feature.
+- **Recording:** starts only from an action you take, and while it runs a stop button is always shown in the menu bar, in addition to macOS's own recording indicators.
+- **Where data lives:** unsaved captures, history, recordings and projects in the app's sandbox container, `~/Library/Containers/com.udsy.superscreenshot.appstore/`; saved files in `~/Pictures/Super Screenshot` or a folder you choose.
+- **Removing everything:** delete the app, then the container folder above.
