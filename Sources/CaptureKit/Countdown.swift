@@ -41,7 +41,7 @@ final class CountdownController {
             MainActor.assumeIsolated { self?.finish(fired: false) }
             return nil
         }) { monitors.append(m) }
-        if let m = NSEvent.addGlobalMonitorForEvents(matching: .keyDown, handler: { [weak self] e in
+        if let m = GlobalEvents.monitor(.keyDown, handler: { [weak self] e in
             guard escape(e) else { return }
             Task { @MainActor in self?.finish(fired: false) }
         }) { monitors.append(m) }
@@ -70,7 +70,7 @@ final class CountdownController {
         done = true
         timer?.invalidate()
         timer = nil
-        monitors.forEach(NSEvent.removeMonitor)
+        monitors.forEach(GlobalEvents.remove)
         monitors.removeAll()
         for p in [outline, badge] { p?.orderOut(nil); p?.close() }
         // May run inside the badge's Cancel button action: release the panels on the next turn.

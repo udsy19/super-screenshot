@@ -44,11 +44,11 @@ final class InputTracker: @unchecked Sendable {
         kindTimer = k
 
         let mouseMask: NSEvent.EventTypeMask = [.leftMouseDown, .leftMouseUp, .rightMouseDown, .rightMouseUp, .otherMouseDown, .otherMouseUp]
-        if let m = NSEvent.addGlobalMonitorForEvents(matching: mouseMask, handler: { [weak self] e in self?.handleMouse(e) }) { monitors.append(m) }
-        if let m = NSEvent.addGlobalMonitorForEvents(matching: .scrollWheel, handler: { [weak self] e in self?.handleScroll(e) }) { monitors.append(m) }
-        let canKeys = recordKeys && Permissions.hasAccessibility
+        if let m = GlobalEvents.monitor(mouseMask, handler: { [weak self] e in self?.handleMouse(e) }) { monitors.append(m) }
+        if let m = GlobalEvents.monitor(.scrollWheel, handler: { [weak self] e in self?.handleScroll(e) }) { monitors.append(m) }
+        let canKeys = recordKeys && Permissions.canMonitorKeys
         lock.lock(); events.keystrokesCaptured = canKeys; lock.unlock()
-        if canKeys, let m = NSEvent.addGlobalMonitorForEvents(matching: .keyDown, handler: { [weak self] e in self?.handleKey(e) }) {
+        if canKeys, let m = GlobalEvents.monitor(.keyDown, handler: { [weak self] e in self?.handleKey(e) }) {
             monitors.append(m)
         }
     }
@@ -57,7 +57,7 @@ final class InputTracker: @unchecked Sendable {
     @MainActor func finish() -> StudioEvents {
         timer?.cancel(); timer = nil
         kindTimer?.invalidate(); kindTimer = nil
-        monitors.forEach { NSEvent.removeMonitor($0) }
+        monitors.forEach { GlobalEvents.remove($0) }
         monitors = []
         pollQueue.sync {}
         lock.lock(); defer { lock.unlock() }

@@ -10,7 +10,7 @@ import SuperScreenshotCore
 enum URLSchemeHandler {
     static func handle(_ url: URL) {
         guard let command = url.host?.lowercased() else { return }
-        let q = Dictionary(URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems?
+        var q = Dictionary(URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems?
             .map { ($0.name.lowercased(), $0.value ?? "") } ?? [], uniquingKeysWith: { $1 })
 
         // Commands that never read the screen (they only open files/windows the user chose) skip the API gate;
@@ -18,6 +18,11 @@ enum URLSchemeHandler {
         let harmless: Set<String> = ["open-settings", "open-history", "open-annotate", "pin", "open-from-clipboard",
                                      "add-quick-access-overlay", "restore-recently-closed", "close-all-overlays"]
         if !harmless.contains(command) && !authorize() { return }
+
+        if q["pasteboard"] == "share" {
+            guard let path = takeSharedImage(token: q["token"], changeCount: q["change"].flatMap(Int.init)) else { return }
+            q["filepath"] = path
+        }
 
         let rect = rectParam(q)
         let options = CaptureOptions(actions: actionParam(q), rect: rect, displayIndex: q["display"].flatMap(Int.init).map { $0 - 1 })
@@ -63,6 +68,20 @@ enum URLSchemeHandler {
         default:
             Log.app.info("Unknown URL command \(command, privacy: .public)")
         }
+    }
+
+    /// An image handed over by a share extension of the App Store edition (`ShareHandoff`), saved as a PNG in the
+    /// temporary folder; returns its path. Nil (and nothing happens) when the handoff is rejected.
+    private static func takeSharedImage(token: String?, changeCount: Int?) -> String? {
+        let png: Data
+        switch ShareHandoff.take(from: NSPasteboard(name: ShareHandoff.pasteboardName), token: token, changeCount: changeCount) {
+        case .success(let data): png = data
+        case .failure(let why):
+            Log.app.error("Rejected shared image: \(String(describing: why), privacy: .public)")
+            return nil
+        }
+        let url = AppPaths.temporary.appendingPathComponent("Shared \(UUID().uuidString.prefix(8)).png")
+        return (try? png.write(to: url)) != nil ? url.path : nil
     }
 
     /// "Allow URL scheme API" gate; the first unapproved call asks the user.

@@ -169,6 +169,8 @@ public struct CaptureOptions {
     func clear()
     /// Drops an entry immediately (e.g. after the file was trashed elsewhere). Doesn't delete the file.
     func remove(_ media: CapturedMedia)
+    /// Adds the entries of another history index file (data import) that aren't present yet. Returns how many.
+    @discardableResult func merge(indexAt fileURL: URL) -> Int
 }
 
 @MainActor public protocol TextServicing: AnyObject {

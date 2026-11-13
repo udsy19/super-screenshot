@@ -1,3 +1,4 @@
+#if !APP_STORE   // The App Store edition is updated by the App Store; no self-updater is compiled in.
 import Foundation
 import Security
 import SuperScreenshotCore
@@ -293,3 +294,4 @@ private enum UpdateEndToEnd {
         return (p, port)
     }
 }
+#endif

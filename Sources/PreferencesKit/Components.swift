@@ -169,7 +169,14 @@ enum Panels {
             p.directoryURL = URL(fileURLWithPath: (current as NSString).expandingTildeInPath, isDirectory: true)
         }
         NSApp.activate()
-        return p.runModal() == .OK ? p.url : nil
+        return chosen(p)
+    }
+
+    /// The panel's choice, remembered for later launches (sandbox grants end when the app quits).
+    private static func chosen(_ p: NSOpenPanel) -> URL? {
+        guard p.runModal() == .OK, let url = p.url else { return nil }
+        SecurityScope.remember(url)
+        return url
     }
 
     static func chooseImage(title: String) -> URL? {
@@ -180,7 +187,7 @@ enum Panels {
         p.canChooseDirectories = false
         p.allowedContentTypes = [.image]
         NSApp.activate()
-        return p.runModal() == .OK ? p.url : nil
+        return chosen(p)
     }
 
     static func reveal(path: String) {

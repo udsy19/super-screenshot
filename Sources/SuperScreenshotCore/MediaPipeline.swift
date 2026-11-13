@@ -174,6 +174,7 @@ public enum MediaPipeline {
             media.url = dest
             media.isSaved = true
             media.notifyChanged()
+            if askForDestination { SecurityScope.remember(dest) }   // History can reopen it after a relaunch
             return dest
         } catch {
             Alerts.error("Something went wrong saving your file.", error)

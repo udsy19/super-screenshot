@@ -119,7 +119,7 @@ final class ClickHighlighter {
     func start() {
         let mask: NSEvent.EventTypeMask = [.leftMouseDown, .rightMouseDown, .otherMouseDown, .leftMouseUp, .rightMouseUp,
                                            .otherMouseUp, .leftMouseDragged, .rightMouseDragged, .otherMouseDragged]
-        if let g = NSEvent.addGlobalMonitorForEvents(matching: mask, handler: { [weak self] e in
+        if let g = GlobalEvents.monitor(mask, handler: { [weak self] e in
             let type = e.type
             MainActor.assumeIsolated { self?.handle(type) }
         }) { monitors.append(g) }
@@ -130,7 +130,7 @@ final class ClickHighlighter {
     }
 
     func stop() {
-        monitors.forEach(NSEvent.removeMonitor)
+        monitors.forEach(GlobalEvents.remove)
         monitors.removeAll()
         active?.removeFromSuperlayer()
         active = nil
@@ -244,8 +244,8 @@ final class KeystrokeOverlay {
     }
 
     func start() {
-        if !Permissions.hasAccessibility { Permissions.requestAccessibility() }
-        if let g = NSEvent.addGlobalMonitorForEvents(matching: .keyDown, handler: { [weak self] e in
+        if !Permissions.canMonitorKeys { Permissions.requestKeyMonitoring() }
+        if let g = GlobalEvents.monitor(.keyDown, handler: { [weak self] e in
             let (code, mods, chars, isRepeat) = (e.keyCode, e.modifierFlags, e.charactersIgnoringModifiers ?? "", e.isARepeat)
             MainActor.assumeIsolated { self?.keyDown(code: code, modifiers: mods, characters: chars, isRepeat: isRepeat) }
         }) { monitors.append(g) }
@@ -256,7 +256,7 @@ final class KeystrokeOverlay {
     }
 
     func stop() {
-        monitors.forEach(NSEvent.removeMonitor)
+        monitors.forEach(GlobalEvents.remove)
         monitors.removeAll()
         fadeWork?.cancel()
         fadeWork = nil

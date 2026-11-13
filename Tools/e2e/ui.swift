@@ -1,4 +1,5 @@
 // UI driver for Super Screenshot end-to-end tests (requires Accessibility permission for the calling terminal).
+// SUPERSCREENSHOT_BUNDLE_ID selects the edition (com.udsy.superscreenshot.appstore for the App Store build).
 //   ui tree [maxDepth]          dump the AX tree of Super Screenshot windows (role, labels, value, frame)
 //   ui windows                  list Super Screenshot AX windows
 //   ui press "<label>"          AXPress the first element whose title/description/identifier matches
@@ -16,7 +17,7 @@ import AppKit
 import ApplicationServices
 
 func app() -> AXUIElement {
-    guard let r = NSRunningApplication.runningApplications(withBundleIdentifier: "com.udsy.superscreenshot").first else { print("not running"); exit(2) }
+    guard let r = NSRunningApplication.runningApplications(withBundleIdentifier: ProcessInfo.processInfo.environment["SUPERSCREENSHOT_BUNDLE_ID"] ?? "com.udsy.superscreenshot").first else { print("not running"); exit(2) }
     return AXUIElementCreateApplication(r.processIdentifier)
 }
 func attr(_ e: AXUIElement, _ a: String) -> AnyObject? { var v: AnyObject?; AXUIElementCopyAttributeValue(e, a as CFString, &v); return v }

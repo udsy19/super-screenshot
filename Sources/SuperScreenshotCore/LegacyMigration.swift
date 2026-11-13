@@ -33,16 +33,8 @@ public enum LegacyMigration {
 
         if fm.fileExists(atPath: old) {
             do {
-                if fm.fileExists(atPath: new) { try mergeMove(from: oldDir, to: newDir) } else { try fm.moveItem(at: oldDir, to: newDir) }
-                // Capture History and Annotate's sidecar projects store absolute paths into the folder.
-                let projects = newDir.appendingPathComponent("Projects", isDirectory: true)
-                let sidecars = ((try? fm.contentsOfDirectory(at: projects, includingPropertiesForKeys: nil)) ?? [])
-                    .filter { $0.pathExtension == legacyDocumentExtension }
-                for file in [newDir.appendingPathComponent("History/history.json")] + sidecars {
-                    guard let data = try? Data(contentsOf: file),
-                          let out = rewritten(data, from: old, to: new) as? Data else { continue }
-                    try? out.write(to: file, options: .atomic)
-                }
+                if fm.fileExists(atPath: new) { try merge(from: oldDir, to: newDir) } else { try fm.moveItem(at: oldDir, to: newDir) }
+                rewriteStoredPaths(in: newDir, from: old, to: new)
             } catch {
                 Log.app.error("Couldn't move \(old, privacy: .public): \(error.localizedDescription, privacy: .public)")
             }
@@ -56,23 +48,43 @@ public enum LegacyMigration {
         return true
     }
 
-    /// Moves every item of `source` that doesn't exist in `destination` (recursing into folders present in both),
-    /// then removes `source` if nothing is left in it. Items that exist on both sides stay in `source`.
-    static func mergeMove(from source: URL, to destination: URL) throws {
+    /// Moves (or with `copying`, copies) every item of `source` that doesn't exist in `destination`, recursing into
+    /// folders present in both. When moving, `source` is removed once nothing is left in it; items that exist on both
+    /// sides stay in `source`. Copying never changes `source`. Top-level names in `skipping` are left alone.
+    /// Returns how many items were transferred.
+    @discardableResult
+    static func merge(from source: URL, to destination: URL, copying: Bool = false, skipping: Set<String> = []) throws -> Int {
         let fm = FileManager.default
         try fm.createDirectory(at: destination, withIntermediateDirectories: true)
+        var count = 0
         for name in try fm.contentsOfDirectory(atPath: source.path) {
             let from = source.appendingPathComponent(name), to = destination.appendingPathComponent(name)
             var fromIsDir: ObjCBool = false, toIsDir: ObjCBool = false
-            if name == ".DS_Store" { try? fm.removeItem(at: from); continue }   // Finder's, never user data
+            if skipping.contains(name) { continue }
+            if name == ".DS_Store" { if !copying { try? fm.removeItem(at: from) }; continue }   // Finder's, never user data
             guard fm.fileExists(atPath: from.path, isDirectory: &fromIsDir) else { continue }
             if !fm.fileExists(atPath: to.path, isDirectory: &toIsDir) {
-                try fm.moveItem(at: from, to: to)
+                if copying { try fm.copyItem(at: from, to: to) } else { try fm.moveItem(at: from, to: to) }
+                count += 1
             } else if fromIsDir.boolValue, toIsDir.boolValue {
-                try mergeMove(from: from, to: to)
+                count += try merge(from: from, to: to, copying: copying)
             }
         }
-        if (try fm.contentsOfDirectory(atPath: source.path)).isEmpty { try fm.removeItem(at: source) }
+        if !copying, (try fm.contentsOfDirectory(atPath: source.path)).isEmpty { try fm.removeItem(at: source) }
+        return count
+    }
+
+    /// Capture History and Annotate's sidecar projects store absolute paths into the library folder `dir`; re-point
+    /// the ones under `old` to `new`.
+    static func rewriteStoredPaths(in dir: URL, from old: String, to new: String) {
+        let projects = dir.appendingPathComponent("Projects", isDirectory: true)
+        let sidecars = ((try? FileManager.default.contentsOfDirectory(at: projects, includingPropertiesForKeys: nil)) ?? [])
+            .filter { [legacyDocumentExtension, "superscreenshot"].contains($0.pathExtension) }
+        for file in [dir.appendingPathComponent("History/history.json")] + sidecars {
+            guard let data = try? Data(contentsOf: file),
+                  let out = rewritten(data, from: old, to: new) as? Data else { continue }
+            try? out.write(to: file, options: .atomic)
+        }
     }
 
     /// `value` with every path or `file://` URL inside the folder `old` re-pointed into `new`. Walks strings, arrays,

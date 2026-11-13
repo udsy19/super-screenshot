@@ -6,10 +6,18 @@ public enum AppPaths {
     /// Name of the app's folder in Application Support (and in the temporary directory).
     public static let folderName = "SuperScreenshot"
 
+    #if APP_STORE
+    /// App Store edition: ~/Pictures/Super Screenshot (the `assets.pictures.read-write` entitlement). Built from the
+    /// real home folder, not `NSHomeDirectory()`, which points into the sandbox container.
+    public static var defaultExportLocation: URL {
+        SecurityScope.realHome.appendingPathComponent("Pictures/Super Screenshot", isDirectory: true)
+    }
+    #else
     public static var defaultExportLocation: URL {
         FileManager.default.urls(for: .desktopDirectory, in: .userDomainMask).first
             ?? URL(fileURLWithPath: NSHomeDirectory()).appendingPathComponent("Desktop")
     }
+    #endif
 
     /// ~/Library/Application Support/SuperScreenshot
     public static var support: URL {
@@ -61,6 +69,74 @@ public enum AppPaths {
             if !fm.fileExists(atPath: candidate.path) { return candidate }
             i += 1
         }
+    }
+}
+
+/// Keeps access to files and folders the user picked in an open or save panel across launches. The sandboxed App Store
+/// edition may only reach them again through security-scoped bookmarks; outside the sandbox every call is a no-op.
+public enum SecurityScope {
+    public static let isSandboxed = ProcessInfo.processInfo.environment["APP_SANDBOX_CONTAINER_ID"] != nil
+
+    /// The user's home folder (`NSHomeDirectory()` is the container inside the sandbox).
+    public static var realHome: URL {
+        guard let pw = getpwuid(getuid()), let dir = pw.pointee.pw_dir else { return URL(fileURLWithPath: NSHomeDirectory()) }
+        return URL(fileURLWithPath: String(cString: dir), isDirectory: true)
+    }
+
+    struct Entry: Codable, Equatable { var path: String; var bookmark: Data }
+    static let key = Defaults.Key<[Entry]>("securityScopedBookmarks", default: [])
+    /// Oldest grants are forgotten beyond this many.
+    static let limit = 200
+
+    /// Remember access to `url` (an existing file or folder the user chose) for later launches.
+    public static func remember(_ url: URL) {
+        guard isSandboxed else { return }
+        guard let data = try? url.bookmarkData(options: .withSecurityScope, includingResourceValuesForKeys: nil, relativeTo: nil) else {
+            Log.app.error("No bookmark for \(url.path, privacy: .public)"); return
+        }
+        let path = url.standardizedFileURL.path
+        Defaults[key] = Array((Defaults[key].filter { $0.path != path } + [Entry(path: path, bookmark: data)]).suffix(limit))
+    }
+
+    /// At launch: re-opens every remembered grant. Access is deliberately held for the lifetime of the process (never
+    /// balanced with `stopAccessing…`): export, upload and wallpaper paths are read at arbitrary times, and the
+    /// handful of grants is released by the system when the app quits. Entries whose file is gone from a mounted
+    /// volume are forgotten; ones on a volume that isn't mounted right now (external disk, network share) are kept.
+    public static func restoreAll() {
+        guard isSandboxed else { return }
+        var kept: [Entry] = []
+        for entry in Defaults[key] {
+            var stale = false
+            let url: URL
+            do {
+                url = try URL(resolvingBookmarkData: entry.bookmark, options: .withSecurityScope, relativeTo: nil,
+                              bookmarkDataIsStale: &stale)
+            } catch {
+                if shouldForget(path: entry.path, error: error, volumeMounted: volumeMounted(for: entry.path)) { continue }
+                kept.append(entry); continue
+            }
+            if !url.startAccessingSecurityScopedResource() {
+                Log.app.error("No access to \(url.path, privacy: .public) from its bookmark")
+            }
+            let data = stale ? (try? url.bookmarkData(options: .withSecurityScope, includingResourceValuesForKeys: nil, relativeTo: nil)) : nil
+            kept.append(Entry(path: url.standardizedFileURL.path, bookmark: data ?? entry.bookmark))
+        }
+        if kept != Defaults[key] { Defaults[key] = kept }
+    }
+
+    /// A bookmark that failed to resolve is dropped only when its target is really gone: a not-found error while the
+    /// volume holding `path` is mounted. Anything else (volume offline, transient errors) keeps it.
+    public static func shouldForget(path: String, error: Error, volumeMounted: Bool) -> Bool {
+        let ns = error as NSError
+        let notFound = ns.domain == NSCocoaErrorDomain && [NSFileNoSuchFileError, NSFileReadNoSuchFileError].contains(ns.code)
+        return notFound && volumeMounted
+    }
+
+    /// Whether the volume `path` lives on is mounted: `/Volumes/<name>` must exist; everything else is the boot volume.
+    public static func volumeMounted(for path: String) -> Bool {
+        let parts = (path as NSString).pathComponents   // ["/", "Volumes", name, …]
+        guard parts.count >= 3, parts[1] == "Volumes" else { return true }
+        return FileManager.default.fileExists(atPath: "/Volumes/" + parts[2])
     }
 }
 

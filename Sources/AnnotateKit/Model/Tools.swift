@@ -199,6 +199,7 @@ public enum RecentProjects {
     }
 
     public static func add(_ url: URL) {
+        SecurityScope.remember(url)
         Defaults[.annotateRecentProjects] = updated(Defaults[.annotateRecentProjects], adding: url.path)
     }
 
